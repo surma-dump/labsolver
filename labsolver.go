@@ -21,17 +21,16 @@ const (
 
 var (
 	options = struct {
-		Image              *os.File      `goptions:"-f, --file, obligatory, rdonly, description='Image file to read'"`
-		Crop               *Crop         `goptions:"-c, --crop, description='Crop [left, top, right, bottom]'"`
-		StartPosition      *Vector2      `goptions:"--start, obligatory, description='Start coordinates in pixels (pre-crop)'"`
-		EndPosition        *Vector2      `goptions:"--end, obligatory, description='End coordinates in pixels (pre-crop)'"`
-		Invert             bool          `goptions:"-i, --invert, description='Invert walls and paths'"`
-		LightnessThreshold float32       `goptions:"-l, --lightness-threshold, description='HSL-Values above lightness threshold are walls'"`
-		Help               goptions.Help `goptions:"-h, --help, description='Show this help'"`
+		Image               *os.File      `goptions:"-f, --file, obligatory, rdonly, description='Image file to read'"`
+		Crop                *Crop         `goptions:"-c, --crop, description='Crop [left, top, right, bottom]'"`
+		StartPosition       *Vector2      `goptions:"--start, obligatory, description='Start coordinates in pixels (pre-crop)'"`
+		EndPosition         *Vector2      `goptions:"--end, obligatory, description='End coordinates in pixels (pre-crop)'"`
+		BrightnessThreshold float64       `goptions:"-b, --brightness-threshold, description='Values above brightness threshold are walls'"`
+		Help                goptions.Help `goptions:"-h, --help, description='Show this help'"`
 	}{
-		LightnessThreshold: 0.5,
-		Crop:               &Crop{0, 0, 0, 0},
-		StartPosition:      NewVector2(0, 0),
+		BrightnessThreshold: 0.5,
+		Crop:                &Crop{0, 0, 0, 0},
+		StartPosition:       NewVector2(0, 0),
 	}
 )
 
@@ -49,7 +48,7 @@ func main() {
 			options.Crop[RIGHT],
 			img.Bounds().Max.X-options.Crop[RIGHT],
 			img.Bounds().Max.Y-options.Crop[BOTTOM]).Canon())
-		iw := NewImageWalker(img, options.StartPosition, options.EndPosition)
+		iw := NewImageWalker(img, NewBrightnessWallDetector(options.BrightnessThreshold, img), options.StartPosition, options.EndPosition)
 		ls := &LabyrinthSolver{&DumpWalker{LabyrinthWalker: iw}}
 		ls.Solve()
 		return
