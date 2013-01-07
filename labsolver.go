@@ -3,7 +3,7 @@ package main
 import (
 	"image"
 	_ "image/jpeg"
-	_ "image/png"
+	"image/png"
 	"log"
 	"os"
 
@@ -22,6 +22,7 @@ const (
 var (
 	options = struct {
 		Image               *os.File      `goptions:"-f, --file, obligatory, rdonly, description='Image file to read'"`
+		Output              *os.File      `goptions:"-o, --output, obligatory, create, wronly, description='File to write to'"`
 		Crop                *Crop         `goptions:"-c, --crop, description='Crop [left, top, right, bottom]'"`
 		StartPosition       *Vector2      `goptions:"--start, obligatory, description='Start coordinates in pixels (pre-crop)'"`
 		EndPosition         *Vector2      `goptions:"--end, obligatory, description='End coordinates in pixels (pre-crop)'"`
@@ -39,18 +40,26 @@ func init() {
 }
 
 func main() {
+	defer options.Image.Close()
+	defer options.Output.Close()
 	img, _, err := image.Decode(options.Image)
 	if err != nil {
 		log.Fatalf("Could not decode image: %s", err)
 	}
 	if ci, ok := img.(CropImage); ok {
+		cpy := copyImage(img)
 		img = ci.SubImage(image.Rect(options.Crop[LEFT],
 			options.Crop[RIGHT],
 			img.Bounds().Max.X-options.Crop[RIGHT],
 			img.Bounds().Max.Y-options.Crop[BOTTOM]).Canon())
 		iw := NewImageWalker(img, NewBrightnessWallDetector(options.BrightnessThreshold, img), options.StartPosition, options.EndPosition)
-		ls := &LabyrinthSolver{&DumpWalker{LabyrinthWalker: iw}}
+
+		ls := &LabyrinthSolver{NewDrawWalker(cpy, iw)}
 		ls.Solve()
+		err := png.Encode(options.Output, cpy)
+		if err != nil {
+			log.Fatalf("Could not save image: %s", err)
+		}
 		return
 	}
 	log.Fatalf("Could not crop image")

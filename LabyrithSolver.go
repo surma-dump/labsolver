@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"image/draw"
 	"log"
 	"math"
@@ -57,6 +58,7 @@ type LabyrinthWalker interface {
 	Walk()
 	TurnLeft()
 	Look() (left, front, right bool)
+	Pos() *Vector2
 	Done() bool
 }
 
@@ -85,6 +87,27 @@ func (dw *DumpWalker) Done() bool {
 		log.Printf("Walk %d step(s), done", dw.StepCount)
 	}
 	return done
+}
+
+type DrawWalker struct {
+	LabyrinthWalker
+	img draw.Image
+}
+
+var (
+	red = color.RGBA{255, 0, 0, 255}
+)
+
+func NewDrawWalker(img draw.Image, lw LabyrinthWalker) *DrawWalker {
+	pos := lw.Pos()
+	img.Set(pos.X, pos.Y, red)
+	return &DrawWalker{lw, img}
+}
+
+func (d *DrawWalker) Walk() {
+	d.LabyrinthWalker.Walk()
+	pos := d.Pos()
+	d.img.Set(pos.X, pos.Y, red)
 }
 
 type WallDetector func(x, y int) bool
@@ -132,6 +155,10 @@ func (iw *ImageWalker) Look() (left, front, right bool) {
 	leftPos := iw.pos.Add(iw.dir.RotateLeft().Point)
 	rightPos := iw.pos.Add(iw.dir.RotateLeft().RotateLeft().RotateLeft().Point)
 	return iw.wd(leftPos.X, leftPos.Y), iw.wd(frontPos.X, frontPos.Y), iw.wd(rightPos.X, rightPos.Y)
+}
+
+func (iw *ImageWalker) Pos() *Vector2 {
+	return iw.pos
 }
 
 func (iw *ImageWalker) Done() bool {
