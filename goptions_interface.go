@@ -31,7 +31,7 @@ func (p *Vector2) MarshalGoption(s string) error {
 	if len(values) != 2 {
 		return fmt.Errorf("Expected array of length 2, got %d", len(values))
 	}
-	p.X, p.Y = values[0], values[1]
+	p.Point.X, p.Point.Y = values[0], values[1]
 	return nil
 }
 

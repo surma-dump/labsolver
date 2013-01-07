@@ -12,19 +12,26 @@ import (
 
 type Crop [4]int
 
+const (
+	LEFT = iota
+	TOP
+	RIGHT
+	BOTTOM
+)
+
 var (
 	options = struct {
 		Image              *os.File      `goptions:"-f, --file, obligatory, rdonly, description='Image file to read'"`
 		Crop               *Crop         `goptions:"-c, --crop, description='Crop [left, top, right, bottom]'"`
-		StartPosition      *Vector2      `goptions:"--start, obligatory, description='Start coordinates in pixels (post-crop)'"`
-		EndPosition        *Vector2      `goptions:"--end, obligatory, description='End coordinates in pixels (post-crop)'"`
+		StartPosition      *Vector2      `goptions:"--start, obligatory, description='Start coordinates in pixels (pre-crop)'"`
+		EndPosition        *Vector2      `goptions:"--end, obligatory, description='End coordinates in pixels (pre-crop)'"`
 		Invert             bool          `goptions:"-i, --invert, description='Invert walls and paths'"`
 		LightnessThreshold float32       `goptions:"-l, --lightness-threshold, description='HSL-Values above lightness threshold are walls'"`
 		Help               goptions.Help `goptions:"-h, --help, description='Show this help'"`
 	}{
 		LightnessThreshold: 0.5,
 		Crop:               &Crop{0, 0, 0, 0},
-		StartPosition:      &Vector2{0, 0},
+		StartPosition:      NewVector2(0, 0),
 	}
 )
 
@@ -37,5 +44,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not decode image: %s", err)
 	}
-	_ = img
+	if ci, ok := img.(CropImage); ok {
+		img = ci.SubImage(image.Rect(options.Crop[LEFT],
+			options.Crop[RIGHT],
+			img.Bounds().Max.X-options.Crop[RIGHT],
+			img.Bounds().Max.Y-options.Crop[BOTTOM]).Canon())
+		iw := NewImageWalker(img, options.StartPosition, options.EndPosition)
+		ls := &LabyrinthSolver{&DumpWalker{LabyrinthWalker: iw}}
+		ls.Solve()
+		return
+	}
+	log.Fatalf("Could not crop image")
+}
+
+type CropImage interface {
+	image.Image
+	SubImage(r image.Rectangle) image.Image
 }
